@@ -27,16 +27,16 @@ class BackgroundTimer {
 	}
 
 	// Original API
-	start(delay) {
+	start = (delay) => {
 		return RNBackgroundTimer.start(delay);
-	}
+	};
 
-	stop() {
+	stop = () => {
 		return RNBackgroundTimer.stop();
-	}
+	};
 
 	// New API, allowing for multiple timers
-	setTimeout(callback, timeout) {
+	setTimeout = (callback, timeout) => {
 		const timeoutId = ++this.uniqueId;
 		this.callbacks[timeoutId] = {
 			callback: callback,
@@ -45,16 +45,16 @@ class BackgroundTimer {
 		};
 		RNBackgroundTimer.setTimeout(timeoutId, timeout);
 		return timeoutId;
-	}
+	};
 
-	clearTimeout(timeoutId) {
+	clearTimeout = (timeoutId) => {
 		if (this.callbacks[timeoutId]) {
 			delete this.callbacks[timeoutId];
 			//RNBackgroundTimer.clearTimeout(timeoutId);
 		}
-	}
+	};
 
-	setInterval(callback, timeout) {
+	setInterval = (callback, timeout) => {
 		const intervalId = ++this.uniqueId;
 		this.callbacks[intervalId] = {
 			callback: callback,
@@ -63,14 +63,14 @@ class BackgroundTimer {
 		};
 		RNBackgroundTimer.setTimeout(intervalId, timeout);
 		return intervalId;
-	}
+	};
 
-	clearInterval(intervalId) {
+	clearInterval = (intervalId) => {
 		if (this.callbacks[intervalId]) {
 			delete this.callbacks[intervalId];
 			//RNBackgroundTimer.clearTimeout(intervalId);
 		}
-	}
+	};
 };
 
 export default new BackgroundTimer();
