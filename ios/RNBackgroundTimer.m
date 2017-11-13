@@ -9,18 +9,37 @@
 @import UIKit;
 #import "RNBackgroundTimer.h"
 
+#define YES_STRING @"Y"
+
 @implementation RNBackgroundTimer {
     UIBackgroundTaskIdentifier bgTask;
     int delay;
+    NSDateFormatter *formatter;
+    NSMutableDictionary<NSNumber*, NSString*> *timerIds;
 }
 
 RCT_EXPORT_MODULE()
 
 - (NSArray<NSString *> *)supportedEvents { return @[@"backgroundTimer", @"backgroundTimer.timeout"]; }
 
+- (id) init
+{
+    self = [super init];
+    if (nil != self) {
+        timerIds = [[NSMutableDictionary alloc] init];
+#ifdef DEBUG
+        formatter = [[NSDateFormatter alloc] init];
+        [formatter setDateFormat:@"yyyy-MM-dd HH:mm:ss"];
+#endif
+    }
+    return self;
+}
+
+
 - (void) _start
 {
     [self _stop];
+    
     bgTask = [[UIApplication sharedApplication] beginBackgroundTaskWithName:@"RNBackgroundTimer" expirationHandler:^{
         // Clean up any unfinished task business by marking where you
         // stopped or ending the task outright.
@@ -61,31 +80,39 @@ RCT_EXPORT_METHOD(stop:(RCTPromiseResolveBlock)resolve
     resolve([NSNumber numberWithBool:YES]);
 }
 
-RCT_EXPORT_METHOD(setTimeout:(int)timeoutId
-                     timeout:(int)timeout
-                  resolver:(RCTPromiseResolveBlock)resolve
-                  rejecter:(RCTPromiseRejectBlock)reject)
+RCT_EXPORT_METHOD(clearTimeout:(int)timeoutId)
 {
+    [timerIds removeObjectForKey:[NSNumber numberWithInt:timeoutId]];
+}
+
+RCT_EXPORT_METHOD(setTimeout:(int)timeoutId
+                     timeout:(int)timeout)
+{
+    timerIds[[NSNumber numberWithInteger:timeoutId]] = YES_STRING;
     __block UIBackgroundTaskIdentifier task = [[UIApplication sharedApplication] beginBackgroundTaskWithName:@"RNBackgroundTimer" expirationHandler:^{
         [[UIApplication sharedApplication] endBackgroundTask:task];
     }];
+    
+#ifdef DEBUG
+    NSLog(@"Setting timeout %d for %d at %@", timeout, timeoutId, [formatter stringFromDate:[NSDate date]]);
+#endif
 
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, timeout * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
         if ([self bridge] != nil) {
-            [self sendEventWithName:@"backgroundTimer.timeout" body:[NSNumber numberWithInt:timeoutId]];
+            NSNumber *numberTimeout = [NSNumber numberWithInt:timeoutId];
+            if (nil != [timerIds objectForKey:numberTimeout])
+            {
+                [timerIds removeObjectForKey:numberTimeout];
+                [self sendEventWithName:@"backgroundTimer.timeout" body:numberTimeout];
+#ifdef DEBUG
+                NSLog(@"Emitted backgroundTimer for %d with timeout %d at %@", timeoutId, timeout, [formatter stringFromDate:[NSDate date]]);
+#endif
+            }
+        } else {
+            NSLog(@"Unable to callback since bridge was nil");
         }
         [[UIApplication sharedApplication] endBackgroundTask:task];
     });
-    resolve([NSNumber numberWithBool:YES]);
 }
-
-/*
-RCT_EXPORT_METHOD(clearTimeout:(int)timeoutId
-                  resolver:(RCTPromiseResolveBlock)resolve
-                  rejecter:(RCTPromiseRejectBlock)reject)
-{
-    // Do nothing :)
-    // timeout will be ignored in javascript anyway :)
-}*/
 
 @end

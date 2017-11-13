@@ -9,12 +9,14 @@ import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
 
 import java.lang.Runnable;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class BackgroundTimerModule extends ReactContextBaseJavaModule {
 
     private Handler handler;
     private ReactContext reactContext;
     private Runnable runnable;
+    private final ConcurrentHashMap<Integer, Boolean> timerMap = new ConcurrentHashMap<>();
 
     public BackgroundTimerModule(ReactApplicationContext reactContext) {
         super(reactContext);
@@ -54,22 +56,23 @@ public class BackgroundTimerModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void setTimeout(final int id, final int timeout) {
+        timerMap.put(id, true);
         Handler handler = new Handler();
         handler.postDelayed(new Runnable(){
             @Override
             public void run(){
-                if (getReactApplicationContext().hasActiveCatalystInstance()) {
+                if (getReactApplicationContext().hasActiveCatalystInstance() && timerMap.contains(id)) {
                     getReactApplicationContext()
                         .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
                         .emit("backgroundTimer.timeout", id);
                 }
+                timerMap.remove(id);
            }
         }, timeout);
     }
 
-    /*@ReactMethod
+    @ReactMethod
     public void clearTimeout(final int id) {
-        // todo one day..
-        // not really neccessary to have
-    }*/
+        timerMap.remove(id);
+    }
 }
